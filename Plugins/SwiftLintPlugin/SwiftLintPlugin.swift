@@ -6,7 +6,7 @@ import PackagePlugin
 func safeShell(_ command: String) throws -> String {
     let task = Process()
     let pipe = Pipe()
-    
+
     task.standardOutput = pipe
     task.standardError = pipe
     task.arguments = ["-c", command]
@@ -14,15 +14,14 @@ func safeShell(_ command: String) throws -> String {
     task.standardInput = nil
 
     try task.run()
-    
+
     let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    let output = String(data: data, encoding: .utf8)!
-    
-    return output
+
+    return String(data: data, encoding: .utf8)!
 }
 
 func getSwiftLint() throws -> Path {
-    let commandPath = (try safeShell("which swiftlint")).split(separator: "\n")[0]
+    let commandPath = try (safeShell("which swiftlint")).split(separator: "\n")[0]
     return Path(String(commandPath))
 }
 
@@ -32,11 +31,11 @@ struct SwiftLintPlugin: BuildToolPlugin {
         guard let sourceTarget = target as? SourceModuleTarget else {
             return []
         }
-        return createBuildCommands(
+        return try createBuildCommands(
             inputFiles: sourceTarget.sourceFiles(withSuffix: "swift").map(\.path),
             packageDirectory: context.package.directory,
             workingDirectory: context.pluginWorkDirectory,
-            tool: try getSwiftLint()
+            tool: getSwiftLint()
         )
     }
 
@@ -90,11 +89,11 @@ extension SwiftLintPlugin: XcodeBuildToolPlugin {
         let inputFilePaths = target.inputFiles
             .filter { $0.type == .source && $0.path.extension == "swift" }
             .map(\.path)
-        return createBuildCommands(
+        return try createBuildCommands(
             inputFiles: inputFilePaths,
             packageDirectory: context.xcodeProject.directory,
             workingDirectory: context.pluginWorkDirectory,
-            tool: try getSwiftLint()
+            tool: getSwiftLint()
         )
     }
 }
