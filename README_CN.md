@@ -1,3 +1,7 @@
+# 注意：这个分支只是 SwiftLint 的删减版本，仅包含 SwiftLintPlugin 部分。
+具体来说，它消除了平台限制，并使用本地安装的SwiftLint。
+请注意，您需要将 zsh 安装在“/bin/zsh”中。
+
 # SwiftLint
 
 SwiftLint 是一个用于强制检查 Swift 代码风格和规定的一个工具，基本上以 [Kodeco's Swift 代码风格指南](https://github.com/kodecocodes/swift-style-guide)为基础。

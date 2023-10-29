@@ -1,3 +1,7 @@
+# NOTE: 이 fork는 SwiftLint의 SwiftLintPlugin만을 포함하는 짧은 버전입니다.
+정확히는, 플러그인 사용에 있어 플랫폼 제약을 없애고, 로컬상에 설치된 SwiftLint를 사용합니다.
+`/bin/zsh`에 zsh가 설치되있어야 합니다.
+
 # SwiftLint
 
 SwiftLint는 스위프트 스타일 및 컨벤션을 강제하기 위한 도구로, [Kodeco 스위프트 스타일 가이드](https://github.com/kodecocodes/swift-style-guide)에 대략적인 기반을 두고 있습니다.

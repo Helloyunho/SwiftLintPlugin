@@ -1,6 +1,31 @@
 import Foundation
 import PackagePlugin
 
+// From https://stackoverflow.com/a/50035059/9376340
+@discardableResult
+func safeShell(_ command: String) throws -> String {
+    let task = Process()
+    let pipe = Pipe()
+    
+    task.standardOutput = pipe
+    task.standardError = pipe
+    task.arguments = ["-c", command]
+    task.executableURL = URL(fileURLWithPath: "/bin/zsh")
+    task.standardInput = nil
+
+    try task.run()
+    
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+    let output = String(data: data, encoding: .utf8)!
+    
+    return output
+}
+
+func getSwiftLint() throws -> Path {
+    let commandPath = (try safeShell("which swiftlint")).split(separator: "\n")[0]
+    return Path(String(commandPath))
+}
+
 @main
 struct SwiftLintPlugin: BuildToolPlugin {
     func createBuildCommands(context: PluginContext, target: Target) async throws -> [Command] {
@@ -11,7 +36,7 @@ struct SwiftLintPlugin: BuildToolPlugin {
             inputFiles: sourceTarget.sourceFiles(withSuffix: "swift").map(\.path),
             packageDirectory: context.package.directory,
             workingDirectory: context.pluginWorkDirectory,
-            tool: try context.tool(named: "swiftlint")
+            tool: try getSwiftLint()
         )
     }
 
@@ -19,7 +44,7 @@ struct SwiftLintPlugin: BuildToolPlugin {
         inputFiles: [Path],
         packageDirectory: Path,
         workingDirectory: Path,
-        tool: PluginContext.Tool
+        tool: Path
     ) -> [Command] {
         if inputFiles.isEmpty {
             // Don't lint anything if there are no Swift source files in this target
@@ -49,7 +74,7 @@ struct SwiftLintPlugin: BuildToolPlugin {
         return [
             .prebuildCommand(
                 displayName: "SwiftLint",
-                executable: tool.path,
+                executable: tool,
                 arguments: arguments,
                 outputFilesDirectory: outputFilesDirectory
             )
@@ -69,7 +94,7 @@ extension SwiftLintPlugin: XcodeBuildToolPlugin {
             inputFiles: inputFilePaths,
             packageDirectory: context.xcodeProject.directory,
             workingDirectory: context.pluginWorkDirectory,
-            tool: try context.tool(named: "swiftlint")
+            tool: try getSwiftLint()
         )
     }
 }
