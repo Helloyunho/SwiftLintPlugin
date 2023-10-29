@@ -26,9 +26,9 @@ func safeShell(_ command: String) throws -> String {
     let outputNoLF = output.trimmingCharacters(in: ["\n"])
     if task.terminationStatus != 0 {
         if outputNoLF == "swiftlint not found" {
-            throw SwiftLintPluginErrors.LintNotFound
+            throw SwiftLintPluginErrors.lintNotFound
         } else {
-            throw SwiftLintPluginErrors.Unknown(outputNoLF)
+            throw SwiftLintPluginErrors.unknown(outputNoLF)
         }
     }
     return outputNoLF
