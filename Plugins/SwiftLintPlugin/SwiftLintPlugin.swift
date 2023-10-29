@@ -1,6 +1,11 @@
 import Foundation
 import PackagePlugin
 
+enum SwiftLintPluginErrors: Error {
+    case lintNotFound
+    case unknown(String)
+}
+
 // From https://stackoverflow.com/a/50035059/9376340
 @discardableResult
 func safeShell(_ command: String) throws -> String {
@@ -14,14 +19,23 @@ func safeShell(_ command: String) throws -> String {
     task.standardInput = nil
 
     try task.run()
+    task.waitUntilExit()
 
     let data = pipe.fileHandleForReading.readDataToEndOfFile()
-
-    return String(data: data, encoding: .utf8)!
+    let output = String(data: data, encoding: .utf8)!
+    let outputNoLF = output.trimmingCharacters(in: ["\n"])
+    if task.terminationStatus != 0 {
+        if outputNoLF == "swiftlint not found" {
+            throw SwiftLintPluginErrors.LintNotFound
+        } else {
+            throw SwiftLintPluginErrors.Unknown(outputNoLF)
+        }
+    }
+    return outputNoLF
 }
 
 func getSwiftLint() throws -> Path {
-    let commandPath = try (safeShell("which swiftlint")).split(separator: "\n")[0]
+    let commandPath = try safeShell("PATH=\"/opt/homebrew/bin:$PATH\" which swiftlint")
     return Path(String(commandPath))
 }
 
@@ -31,12 +45,25 @@ struct SwiftLintPlugin: BuildToolPlugin {
         guard let sourceTarget = target as? SourceModuleTarget else {
             return []
         }
-        return try createBuildCommands(
-            inputFiles: sourceTarget.sourceFiles(withSuffix: "swift").map(\.path),
-            packageDirectory: context.package.directory,
-            workingDirectory: context.pluginWorkDirectory,
-            tool: getSwiftLint()
-        )
+        do {
+            return try createBuildCommands(
+                inputFiles: sourceTarget.sourceFiles(withSuffix: "swift").map(\.path),
+                packageDirectory: context.package.directory,
+                workingDirectory: context.pluginWorkDirectory,
+                tool: getSwiftLint()
+            )
+        } catch {
+            switch error {
+            case SwiftLintPluginErrors.lintNotFound:
+                Diagnostics.warning("SwiftLint not installed, download from https://github.com/realm/SwiftLint")
+                return []
+            case SwiftLintPluginErrors.unknown(let err):
+                Diagnostics.error(err)
+                return []
+            default:
+                throw error
+            }
+        }
     }
 
     private func createBuildCommands(
@@ -89,12 +116,25 @@ extension SwiftLintPlugin: XcodeBuildToolPlugin {
         let inputFilePaths = target.inputFiles
             .filter { $0.type == .source && $0.path.extension == "swift" }
             .map(\.path)
-        return try createBuildCommands(
-            inputFiles: inputFilePaths,
-            packageDirectory: context.xcodeProject.directory,
-            workingDirectory: context.pluginWorkDirectory,
-            tool: getSwiftLint()
-        )
+        do {
+            return try createBuildCommands(
+                inputFiles: inputFilePaths,
+                packageDirectory: context.xcodeProject.directory,
+                workingDirectory: context.pluginWorkDirectory,
+                tool: getSwiftLint()
+            )
+        } catch {
+            switch error {
+            case SwiftLintPluginErrors.lintNotFound:
+                Diagnostics.warning("SwiftLint not installed, download from https://github.com/realm/SwiftLint")
+                return []
+            case SwiftLintPluginErrors.unknown(let err):
+                Diagnostics.error(err)
+                return []
+            default:
+                throw error
+            }
+        }
     }
 }
 #endif
